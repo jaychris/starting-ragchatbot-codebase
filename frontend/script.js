@@ -5,7 +5,7 @@ const API_URL = '/api';
 let currentSessionId = null;
 
 // DOM elements
-let chatMessages, chatInput, sendButton, totalCourses, courseTitles;
+let chatMessages, chatInput, sendButton, totalCourses, courseTitles, newChatButton;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,7 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
     sendButton = document.getElementById('sendButton');
     totalCourses = document.getElementById('totalCourses');
     courseTitles = document.getElementById('courseTitles');
-    
+    newChatButton = document.getElementById('newChatButton');
+
     setupEventListeners();
     createNewSession();
     loadCourseStats();
@@ -38,6 +39,9 @@ function setupEventListeners() {
             sendMessage();
         });
     });
+
+    // New chat button
+    newChatButton.addEventListener('click', handleNewChat);
 }
 
 
@@ -158,6 +162,22 @@ async function createNewSession() {
     currentSessionId = null;
     chatMessages.innerHTML = '';
     addMessage('Welcome to the Course Materials Assistant! I can help you with questions about courses, lessons and specific content. What would you like to know?', 'assistant', null, true);
+}
+
+async function handleNewChat() {
+    const oldSessionId = currentSessionId;
+
+    // Reset UI immediately
+    createNewSession();
+
+    // Cleanup backend (non-blocking)
+    if (oldSessionId) {
+        try {
+            await fetch(`${API_URL}/session/${oldSessionId}`, { method: 'DELETE' });
+        } catch (error) {
+            console.warn('Failed to clear backend session:', error);
+        }
+    }
 }
 
 // Load course statistics
