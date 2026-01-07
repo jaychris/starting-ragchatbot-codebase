@@ -128,6 +128,76 @@ class CourseSearchTool(Tool):
 
         return "\n\n".join(formatted)
 
+
+class CourseOutlineTool(Tool):
+    """Tool for retrieving course outline information"""
+
+    def __init__(self, vector_store: VectorStore):
+        self.store = vector_store
+        self.last_sources = []  # Track sources for the UI
+
+    def get_tool_definition(self) -> Dict[str, Any]:
+        """Return Anthropic tool definition for this tool"""
+        return {
+            "name": "get_course_outline",
+            "description": "Get course structure including title, link, and complete lesson list. Use for questions about course syllabus, outline, or what lessons are covered.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "course_name": {
+                        "type": "string",
+                        "description": "Course title to look up (partial matches work, e.g. 'MCP', 'Introduction')"
+                    }
+                },
+                "required": ["course_name"]
+            }
+        }
+
+    def execute(self, course_name: str) -> str:
+        """
+        Execute the outline tool to get course structure.
+
+        Args:
+            course_name: Course title to look up
+
+        Returns:
+            Formatted course outline or error message
+        """
+        outline = self.store.get_course_outline(course_name)
+
+        if not outline:
+            return f"No course found matching '{course_name}'."
+
+        # Format the output
+        result = f"Course: {outline['title']}\n"
+        if outline.get('course_link'):
+            result += f"Link: {outline['course_link']}\n"
+
+        result += "\nLessons:\n"
+
+        # Track source for UI
+        self.last_sources = [{
+            "text": outline['title'],
+            "url": outline.get('course_link')
+        }]
+
+        lessons = outline.get('lessons', [])
+        if not lessons:
+            result += "No lessons found."
+        else:
+            for lesson in lessons:
+                lesson_num = lesson.get('lesson_number', '?')
+                lesson_title = lesson.get('lesson_title', 'Untitled')
+                lesson_link = lesson.get('lesson_link', '')
+
+                if lesson_link:
+                    result += f"{lesson_num}. {lesson_title} - {lesson_link}\n"
+                else:
+                    result += f"{lesson_num}. {lesson_title}\n"
+
+        return result
+
+
 class ToolManager:
     """Manages available tools for the AI"""
     
